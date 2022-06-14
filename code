@@ -1,0 +1,179 @@
+import numpy as np
+import pandas as pd
+from sklearn import preprocessing
+import matplotlib.pyplot as plt
+from sklearn import linear_model
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
+from sklearn import metrics
+from sklearn import svm
+from genetic_selection import GeneticSelectionCV
+from sklearn.cluster import KMeans
+from sklearn.model_selection import GridSearchCV
+
+train = pd.read_csv('ptrain.csv')
+# test1 = pd.read_csv('ptest.csv')
+
+
+#  TYPE
+res = [3.0 if item == 'IL' else item for item in train['Type']]
+train['Type'] = res
+
+res = [2.0 if item == 'FC' else item for item in train['Type']]
+train['Type'] = res
+
+res = [1.0 if item == 'DT' else item for item in train['Type']]
+train['Type'] = res
+
+# CITY GROUP
+res = [10.0 if item == 'Big Cities' else item for item in train['City Group']]
+train['City Group'] = res
+
+res = [1.0 if item == 'Other' else item for item in train['City Group']]
+train['City Group'] = res
+
+# City
+h = train['City'].unique()
+for i in range(len(h)):
+    ret = [i if item == h[i] else item for item in train['City']]
+    train['City'] = ret
+k = train['City'].unique()
+
+#  OPEN DATE
+h = train.loc[:, 'Open Date'].copy()
+f = []
+for i in range(len(train['Open Date'])):
+    h[i] = h[i][6:]
+train['Open Date'] = h
+
+# Normalize X, Y
+X = train.drop(['Id', 'revenue'], axis=1)
+labels = train["revenue"]
+d = preprocessing.StandardScaler()
+f = d.fit_transform(X)
+k = train.keys()
+
+
+#  # Bar Plot
+# plt.bar(train['City Group'], train['revenue'])
+# plt.xticks(rotation = 2)
+# plt.show()
+#
+# #  Box Plot
+# plt.figure(figsize=(50,30))
+# sns.boxplot(x='Open Date', y='revenue', data= train)
+# plt.show()
+#
+#
+# #  Box Plot
+# plt.figure(figsize=(50,30))
+# sns.boxplot(x='City', y='revenue', data= train)
+# plt.show()
+
+
+my_array = np.array([f])
+
+my_array = my_array[0, :, :]
+
+dhg = pd.DataFrame(my_array, columns=['Open Date', 'City', 'City Group', 'Type', 'P1', 'P2', 'P3', 'P4',
+                                      'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'P12', 'P13', 'P14', 'P15',
+                                      'P16', 'P17', 'P18', 'P19', 'P20', 'P21', 'P22', 'P23', 'P24', 'P25',
+                                      'P26', 'P27', 'P28', 'P29', 'P30', 'P31', 'P32', 'P33', 'P34', 'P35',
+                                      'P36', 'P37'])
+dhg = pd.concat([dhg, labels], axis=1)
+dhg['revenue'] = labels
+
+# # Heatmap Plot
+# plt.figure(figsize=(35, 20))
+# sns.heatmap(dhg.corr(), annot=True)
+# plt.show()
+
+
+X = dhg.drop(['revenue'], axis=1)
+my_array = np.array([X])
+
+my_array = my_array[0, :, :]
+reg = linear_model.LinearRegression()
+X_test = my_array[100:137, :]
+X_train = my_array[:100, :]
+
+y_train = np.array(dhg['revenue'][:100])
+y_test = np.array(dhg['revenue'][100:137])
+
+reg.fit(X_train, y_train)
+
+predictions = reg.predict(X_test)
+
+print('MAE:', metrics.mean_absolute_error(y_test, predictions))
+print('MSE:', metrics.mean_squared_error(y_test, predictions))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, predictions)))
+
+model = svm.SVR(kernel='rbf', C=0.00000000001)
+model1 = svm.SVR(kernel='poly', degree=20)
+model2 = svm.SVR(kernel='linear', C= 0.001)
+
+model.fit(X_train, y_train)
+model1.fit(X_train, y_train)
+model2.fit(X_train, y_train)
+
+predictions = model.predict(X_test)
+print('\n')
+print('MAE:', metrics.mean_absolute_error(y_test, predictions))
+print('MSE:', metrics.mean_squared_error(y_test, predictions))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, predictions)))
+
+
+predictions = model1.predict(X_test)
+print('\n')
+print('MAE:', metrics.mean_absolute_error(y_test, predictions))
+print('MSE:', metrics.mean_squared_error(y_test, predictions))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, predictions)))
+
+
+predictions = model2.predict(X_test)
+print('\n')
+print('MAE:', metrics.mean_absolute_error(y_test, predictions))
+print('MSE:', metrics.mean_squared_error(y_test, predictions))
+print('RMSE:', np.sqrt(metrics.mean_squared_error(y_test, predictions)))
+print('\nR SVR linear',model2.score(X_test, y_test))
+
+#
+# parameters = {'kernel':('linear', 'rbf'), 'C':[1, 10]}
+# svc = svm.SVC()
+# clf = GridSearchCV(svc, parameters)
+# clf.fit(iris.data, iris.target)
+#
+#
+# print(sorted(clf.cv_results_.keys()))
+
+
+# if __name__ == "__main__":
+#     X = my_array[:99,:]
+#     y = np.array(dhg['revenue'][:99])
+#     y = y.reshape(-1, 1)
+#
+#     kmeans = KMeans(n_clusters=6, random_state=0).fit(y)
+#     M = kmeans.labels_
+#     M = np.array(M)
+#     estimator = linear_model.LogisticRegression(solver="liblinear", multi_class="ovr")
+#
+#     selector = GeneticSelectionCV(
+#         estimator,
+#         cv=2,
+#         verbose=1,
+#         scoring="accuracy",
+#         max_features=20,
+#         n_population=50,
+#         crossover_proba=0.5,
+#         mutation_proba=0.2,
+#         n_generations=60,
+#         crossover_independent_proba=0.5,
+#         mutation_independent_proba=0.05,
+#         tournament_size=3,
+#         n_gen_no_change=10,
+#         caching=True,
+#         n_jobs=4,
+#     )
+#     selector = selector.fit(X, M)
+#
+#     print(selector.support_)
